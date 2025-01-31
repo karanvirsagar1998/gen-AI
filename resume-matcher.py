@@ -13,8 +13,10 @@ import PyPDF2
 # We did not use pdfplumber library here because pdfplumber specializes in precise text extraction and
 # is particularly suited for handling PDFs with complex layouts, such as
 # tables, multi-column formats, or text embedded within graphical elements. 
+from transformers import pipeline
 
 nlp = spacy.load("en_core_web_sm")
+
 
 def get_text_from_pdf_file(pdf_path):
     with open(pdf_path, 'rb') as pdf: #Opens the specified pdf_file in binary read mode ('rb').
@@ -48,14 +50,12 @@ def extract_education(doc):
     return found_education
 
 def extract_skills(doc):
-    doc = nlp(doc)
-    #pre-defined skill for a job requirement...
-    skills = ["maintenance", "coordination", "supervision","reporting","management", "Fire alarm handling", "after-hours support"]
-    found_skills = set() #creating a set to avoid same skills twice
-    for token in doc:
-        if token.text.lower() in skills:
-            found_skills.add(token.text.lower())
-    return found_skills
+    nlp = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
+    # doc = nlp(doc)
+    skills = nlp(doc)
+    # extracted_skills = [ent.text for ent in doc.ents if ent.label_ in ['ORG', 'GPE', 'PRODUCT', 'SKILLS']]
+    extracted_skills = [ent['word'] for ent in skills if ent['score'] > 0.8]
+    print(extracted_skills)
 
 def extract_workExperience(doc):
     workExperience = []
@@ -103,12 +103,12 @@ def calculate_detailed_score(resume, job_description):
     return scores
 
 #Testing....
-resume_text = get_text_from_word_file("resumes/Resume.docx") #get text from resume
-jd = get_text_from_word_file("resumes/JD.docx") #get text from jd
+resume_text = get_text_from_word_file("resumes/Karanvir Singh.docx") #get text from resume
+jd = get_text_from_word_file("resumes/jd.docx") #get text from jd
 
 job_desc_processed = text_prepprocess(jd)
 resume_processed = text_prepprocess(resume_text)
 
-scores = calculate_detailed_score(resume_processed, job_desc_processed)
+scores = calculate_detailed_score(resume_text, job_desc_processed)
 for category, score in scores.items():
     print(f"{category.capitalize()} Match: {score}%")
